@@ -1,0 +1,25 @@
+{
+  "name": "oxy46-workshop-video",
+  "version": "1.0.0",
+  "description": "Oxy46 Executive Workshop Opening Video – Premium Remotion Composition",
+  "scripts": {
+    "start": "remotion studio",
+    "build": "remotion render OxyBoardWorkshop out/video.mp4 --codec h264",
+    "render:hq": "remotion render OxyBoardWorkshop out/video-hq.mp4 --codec h264 --crf 12",
+    "render:preview": "remotion render OxyBoardWorkshop out/preview.mp4 --codec h264 --scale 0.5"
+  },
+  "dependencies": {
+    "@remotion/cli": "^4.0.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "remotion": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "typescript": "^5.0.0"
+  },
+  "remotion": {
+    "entryPoint": "src/index.ts"
+  }
+}
