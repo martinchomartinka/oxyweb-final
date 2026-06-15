@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0">
+<title>Oxy46 — IA para Directorios · Workshop Ejecutivo</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;overflow:hidden;background:#0B0F14;color:#F0EDE8}
+body{font-family:-apple-system,'Inter','Helvetica Neue',Helvetica,Arial,sans-serif}
+#bg{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none}
+.scene{position:fixed;top:0;left:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;z-index:1;opacity:0;pointer-events:none;transition:opacity 1.2s ease}
+.scene.active{opacity:1;pointer-events:auto}
+/* PLAY SCREEN */
+#play-screen{position:fixed;top:0;left:0;width:100%;height:100%;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#0B0F14;gap:28px}
+#play-screen h1{font-size:clamp(24px,5vw,56px);font-weight:200;letter-spacing:-0.03em;text-align:center;padding:0 24px;max-width:680px;line-height:1.15}
+.mono{font-family:'SF Mono','IBM Plex Mono','Courier New',monospace;font-size:clamp(9px,1.2vw,12px);letter-spacing:0.2em;text-transform:uppercase;color:#4B5563}
+#play-btn{width:68px;height:68px;border-radius:50%;background:rgba(59,130,246,0.12);border:1px solid rgba(59,130,246,0.35);color:#3B82F6;font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .3s;margin-top:4px}
+#play-btn:hover{background:rgba(59,130,246,0.22);transform:scale(1.06)}
+/* PROGRESS */
+#progress{position:fixed;bottom:0;left:0;right:0;height:2px;background:rgba(255,255,255,0.05);z-index:200}
+#pf{height:100%;width:0%;background:linear-gradient(90deg,#3B82F6,#22D3EE);transition:width .15s linear}
+/* DOTS */
+#dots{position:fixed;top:22px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:200;opacity:0;transition:opacity .5s}
+#dots.on{opacity:1}
+.dot{width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,0.12);transition:all .4s}
+.dot.active{background:#3B82F6;transform:scale(1.4)}
+/* SKIP */
+#skip{position:fixed;bottom:16px;right:20px;font-family:'SF Mono',monospace;font-size:10px;color:#4B5563;letter-spacing:.14em;background:none;border:none;cursor:pointer;text-transform:uppercase;z-index:200;transition:color .2s}
+#skip:hover{color:#A8B2C1}
+/* SCENE LABEL */
+.slbl{position:absolute;bottom:24px;left:32px;font-family:'SF Mono',monospace;font-size:clamp(8px,1vw,10px);letter-spacing:.16em;color:#2D3748;text-transform:uppercase}
+/* TEXT ANIMATION */
+.t{position:absolute;opacity:0;transform:translateY(16px);transition:opacity .65s ease,transform .65s ease;pointer-events:none;text-align:center}
+.t.on{opacity:1;transform:translateY(0)}
+.t.off{opacity:0;transform:translateY(-8px)}
+/* COLORS */
+.ac{color:#3B82F6}.ng{color:#EF4444}.dm{color:#A8B2C1}
+
+/* ── S1 APERTURA ── */
+#s1 .t{font-size:clamp(26px,5.5vw,74px);font-weight:200;letter-spacing:-0.03em;line-height:1.12;max-width:min(82%,900px)}
+#s1-brand{position:absolute;top:28px;left:32px;font-family:'SF Mono',monospace;font-size:11px;color:#3B82F6;letter-spacing:.24em;opacity:0;transition:opacity .6s}
+
+/* ── S2 VALUE LOSS ── */
+#s2{flex-direction:row;padding:0;align-items:stretch}
+.s2l{flex:1;max-width:58%;display:flex;align-items:center;padding:40px 16px 60px 40px}
+.s2l svg{width:100%;height:100%;max-height:78vh}
+.s2r{flex:1;display:flex;flex-direction:column;justify-content:center;padding:40px 40px 40px 16px;position:relative}
+.s2r .t{text-align:right;right:40px;font-size:clamp(20px,3.2vw,50px);font-weight:200;letter-spacing:-.025em;line-height:1.2;max-width:460px}
+@media(max-width:640px){#s2{flex-direction:column}.s2l{max-width:100%;padding:20px 20px 0;flex:none;height:38vh}.s2r{padding:0 20px 16px;flex:none}.s2r .t{right:20px;font-size:clamp(18px,5vw,36px)}}
+
+/* ── S3 STRUCTURAL SHIFT ── */
+#s3{flex-direction:row;padding:clamp(20px,4vw,60px);gap:clamp(20px,4vw,50px)}
+.s3l{flex:1;display:flex;align-items:center;justify-content:center}
+.s3l svg{width:100%;max-height:75vh}
+.s3r{flex:1;display:flex;flex-direction:column;justify-content:center;position:relative}
+.s3r .t{text-align:right;font-size:clamp(18px,3vw,50px);font-weight:200;letter-spacing:-.025em;line-height:1.2;max-width:420px;right:0}
+@media(max-width:640px){#s3{flex-direction:column;padding:20px}.s3l{flex:none;height:42vh}.s3r .t{font-size:clamp(16px,5vw,32px)}}
+
+/* ── S4 MATURITY ── */
+#s4{flex-direction:column;padding:clamp(16px,3vw,32px);gap:clamp(14px,2vw,22px);align-items:center}
+.s4hdr{font-size:clamp(11px,2vw,20px);font-weight:300;color:#A8B2C1;letter-spacing:-.01em;text-align:center;opacity:0;transition:opacity .7s}
+.s4hdr.on{opacity:1}
+.cards{display:flex;flex-direction:row;gap:clamp(10px,2vw,18px);width:100%;max-width:1380px}
+@media(max-width:700px){.cards{flex-direction:column;gap:10px;overflow-y:auto}}
+.card{flex:1;border-radius:8px;padding:clamp(18px,2.5vw,36px);border:1px solid rgba(255,255,255,0.06);background:#141A22;position:relative;overflow:hidden;opacity:0;transform:translateX(28px);transition:opacity .65s ease,transform .65s ease}
+.card.on{opacity:1;transform:translateX(0)}
+.ctop{height:2px;position:absolute;top:0;left:0;right:0}
+.cnum{font-family:'SF Mono',monospace;font-size:clamp(9px,1vw,12px);letter-spacing:.2em;opacity:.7;margin-bottom:clamp(12px,2vw,24px)}
+.cvis{width:100%;height:clamp(70px,9vw,130px);margin-bottom:clamp(12px,2vw,20px)}
+.ctitle{font-size:clamp(18px,2.4vw,32px);font-weight:200;letter-spacing:-.02em;margin-bottom:5px}
+.csub{font-family:'SF Mono',monospace;font-size:clamp(8px,1vw,11px);letter-spacing:.18em;text-transform:uppercase;opacity:.75;margin-bottom:clamp(12px,2vw,20px)}
+.cdet{font-size:clamp(10px,1.1vw,13px);font-weight:300;color:#8B9099;line-height:1.5;padding-left:11px;margin-bottom:7px;border-left:1px solid rgba(255,255,255,0.08)}
+
+/* ── S5 NEW ENTERPRISE ── */
+#s5{flex-direction:row;padding:clamp(24px,4vw,60px);gap:clamp(24px,4vw,60px)}
+.s5l{flex:1;display:flex;flex-direction:column;justify-content:center;gap:18px}
+.s5r{flex:1;display:flex;align-items:center;justify-content:center}
+@media(max-width:640px){#s5{flex-direction:column;padding:24px 20px;gap:20px}.s5r{display:none}}
+.blbl{font-family:'SF Mono',monospace;font-size:clamp(8px,.9vw,10px);letter-spacing:.12em;text-transform:uppercase;color:#4B5563;margin-bottom:5px}
+.btrack{height:18px;background:rgba(255,255,255,0.04);border-radius:3px;overflow:hidden;margin-bottom:10px}
+.bfill{height:100%;border-radius:3px;width:0%;transition:width 1.6s cubic-bezier(.4,0,.2,1)}
+.s5msgs{position:relative;height:clamp(60px,8vw,100px)}
+.s5msgs .t{text-align:left;font-size:clamp(20px,3vw,48px);font-weight:200;letter-spacing:-.025em;line-height:1.2;max-width:100%;left:0}
+
+/* ── S6 CLOSING ── */
+#s6{flex-direction:column;align-items:center;justify-content:center}
+.s6in{display:flex;flex-direction:column;align-items:center;text-align:center}
+.s6mark{width:44px;height:44px;margin-bottom:18px;opacity:0;transition:opacity .8s,transform .8s;transform:scale(.88) rotate(-5deg)}
+.s6mark.on{opacity:1;transform:scale(1) rotate(0deg)}
+.s6oxy{font-family:'SF Mono',monospace;font-size:clamp(9px,1.2vw,13px);letter-spacing:.36em;color:#3B82F6;margin-bottom:22px;opacity:0;transition:opacity .7s}
+.s6oxy.on{opacity:1}
+.rule{background:#3B82F6;opacity:0;height:1.5px;width:0;margin:0 auto 24px;transition:opacity .5s,width .8s cubic-bezier(.4,0,.2,1)}
+.rule.on{opacity:.5;width:52px}
+.rule2{background:#4B5563;opacity:0;height:1px;width:0;margin:24px auto 18px;transition:opacity .5s,width .7s}
+.rule2.on{opacity:.4;width:36px}
+.s6ws{font-family:'SF Mono',monospace;font-size:clamp(9px,1vw,12px);letter-spacing:.22em;text-transform:uppercase;color:#4B5563;margin-bottom:14px;opacity:0;transition:opacity .7s}
+.s6ws.on{opacity:1}
+.s6ttl{font-size:clamp(30px,6.5vw,84px);font-weight:200;letter-spacing:-.03em;line-height:1.05;margin-bottom:14px;opacity:0;transform:translateY(14px);transition:opacity .8s,transform .8s}
+.s6ttl.on{opacity:1;transform:translateY(0)}
+.s6sub{font-size:clamp(12px,1.7vw,19px);font-weight:300;color:#A8B2C1;letter-spacing:-.01em;line-height:1.4;max-width:min(90%,580px);opacity:0;transition:opacity .8s}
+.s6sub.on{opacity:1}
+.s6tag{font-size:clamp(10px,1.2vw,14px);font-weight:300;color:#4B5563;opacity:0;transition:opacity .8s;margin-top:2px}
+.s6tag span{color:#A8B2C1}
+.s6tag.on{opacity:1}
+.s6city{position:absolute;bottom:22px;font-family:'SF Mono',monospace;font-size:10px;letter-spacing:.18em;color:#1F2937;text-transform:uppercase;opacity:0;transition:opacity .8s}
+.s6city.on{opacity:1}
+</style>
+</head>
+<body>
+<canvas id="bg"></canvas>
+
+<!-- PLAY SCREEN -->
+<div id="play-screen">
+  <div class="mono">Oxy46 · Workshop Ejecutivo · 2025</div>
+  <h1>IA para Directorios</h1>
+  <button id="play-btn" onclick="startVideo()">&#9654;</button>
+  <div class="mono" style="color:#2D3748;margin-top:4px">95 segundos · 6 bloques</div>
+</div>
+
+<!-- UI -->
+<div id="progress"><div id="pf"></div></div>
+<div id="dots"><div class="dot" id="d0"></div><div class="dot" id="d1"></div><div class="dot" id="d2"></div><div class="dot" id="d3"></div><div class="dot" id="d4"></div><div class="dot" id="d5"></div></div>
+<button id="skip" onclick="skipScene()">Skip →</button>
+
+<!-- S1: APERTURA -->
+<div class="scene" id="s1">
+  <div id="s1-brand">OXY46</div>
+  <div class="t" id="t10">No estamos entrando en<br>una nueva era de software.</div>
+  <div class="t" id="t11">Estamos entrando en<br>una nueva era de capacidad.</div>
+  <div class="t" id="t12">La IA no suma una herramienta.</div>
+  <div class="t" id="t13">Redefine cómo se crea valor.</div>
+  <div class="slbl">Apertura</div>
+</div>
+
+<!-- S2: PÉRDIDA DE VALOR -->
+<div class="scene" id="s2">
+  <div class="s2l">
+    <svg viewBox="0 0 540 460" xmlns="http://www.w3.org/2000/svg">
+      <line x1="55" y1="40" x2="55" y2="410" stroke="rgba(255,255,255,0.08)" stroke-width=".8"/>
+      <line x1="55" y1="40" x2="520" y2="40" stroke="rgba(255,255,255,0.06)" stroke-width=".8" stroke-dasharray="3 6"/>
+      <line x1="55" y1="160" x2="520" y2="160" stroke="rgba(255,255,255,0.04)" stroke-width=".8" stroke-dasharray="3 6"/>
+      <line x1="55" y1="280" x2="520" y2="280" stroke="rgba(255,255,255,0.04)" stroke-width=".8" stroke-dasharray="3 6"/>
+      <line x1="55" y1="400" x2="520" y2="400" stroke="rgba(255,255,255,0.04)" stroke-width=".8" stroke-dasharray="3 6"/>
+      <text x="60" y="26" fill="rgba(255,255,255,0.18)" font-family="monospace" font-size="9" letter-spacing="2">COMPETITIVIDAD → TIEMPO</text>
+      <path id="pm" d="M55,55 Q290,100 520,350" fill="none" stroke="#EF4444" stroke-width="1.8" stroke-dasharray="580" stroke-dashoffset="580" opacity=".75"/>
+      <path id="pv" d="M55,85 Q290,155 520,300" fill="none" stroke="#3B82F6" stroke-width="1.8" stroke-dasharray="550" stroke-dashoffset="550" opacity=".75"/>
+      <path id="pc" d="M55,115 Q290,205 520,380" fill="none" stroke="#22D3EE" stroke-width="1.8" stroke-dasharray="590" stroke-dashoffset="590" opacity=".75"/>
+      <text id="lm" x="62" y="48" fill="#EF4444" font-family="monospace" font-size="9" letter-spacing="1.5" opacity="0">MARGEN</text>
+      <text id="lv" x="62" y="78" fill="#3B82F6" font-family="monospace" font-size="9" letter-spacing="1.5" opacity="0">VELOCIDAD</text>
+      <text id="lc" x="62" y="108" fill="#22D3EE" font-family="monospace" font-size="9" letter-spacing="1.5" opacity="0">CAPACIDAD</text>
+      <circle id="dm" cx="520" cy="350" r="4" fill="#EF4444" opacity="0"/>
+      <circle id="dv" cx="520" cy="300" r="4" fill="#3B82F6" opacity="0"/>
+      <circle id="dc" cx="520" cy="380" r="4" fill="#22D3EE" opacity="0"/>
+    </svg>
+  </div>
+  <div class="s2r">
+    <div class="t" id="t20">No adoptar IA ya no te deja igual.</div>
+    <div class="t ng" id="t21" style="font-size:clamp(28px,5vw,68px)">Te hace retroceder.</div>
+    <div class="t dm" id="t22" style="font-size:clamp(16px,2.2vw,32px);line-height:1.4">Más fricción.<br>Más costo.<br>Menor velocidad.<br>Menor capacidad.</div>
+    <div class="t dm" id="t23" style="font-size:clamp(20px,3vw,46px);font-style:italic">Pérdida de valor invisible.</div>
+  </div>
+  <div class="slbl">Erosión de Valor</div>
+</div>
+
+<!-- S3: CAMBIO ESTRUCTURAL -->
+<div class="scene" id="s3">
+  <div class="s3l">
+    <svg viewBox="0 0 500 340" xmlns="http://www.w3.org/2000/svg">
+      <g id="sb" style="transition:opacity .9s">
+        <rect x="210" y="10" width="80" height="28" rx="3" fill="#1C2535" stroke="rgba(255,255,255,0.12)" stroke-width=".8"/>
+        <text x="250" y="28" text-anchor="middle" fill="#F0EDE8" font-family="sans-serif" font-size="10" font-weight="300">CEO</text>
+        <line x1="250" y1="38" x2="155" y2="68" stroke="rgba(255,255,255,0.09)" stroke-width=".7"/>
+        <line x1="250" y1="38" x2="345" y2="68" stroke="rgba(255,255,255,0.09)" stroke-width=".7"/>
+        <rect x="115" y="68" width="80" height="26" rx="3" fill="#1C2535" stroke="rgba(255,255,255,0.09)" stroke-width=".8"/>
+        <text x="155" y="85" text-anchor="middle" fill="#A8B2C1" font-family="sans-serif" font-size="9">Dir A</text>
+        <rect x="305" y="68" width="80" height="26" rx="3" fill="#1C2535" stroke="rgba(255,255,255,0.09)" stroke-width=".8"/>
+        <text x="345" y="85" text-anchor="middle" fill="#A8B2C1" font-family="sans-serif" font-size="9">Dir B</text>
+        <line x1="155" y1="94" x2="105" y2="124" stroke="rgba(255,255,255,0.07)" stroke-width=".7"/>
+        <line x1="155" y1="94" x2="200" y2="124" stroke="rgba(255,255,255,0.07)" stroke-width=".7"/>
+        <line x1="345" y1="94" x2="300" y2="124" stroke="rgba(255,255,255,0.07)" stroke-width=".7"/>
+        <line x1="345" y1="94" x2="395" y2="124" stroke="rgba(255,255,255,0.07)" stroke-width=".7"/>
+        <rect x="65" y="124" width="80" height="22" rx="3" fill="#1C2535" stroke="rgba(255,255,255,0.07)" stroke-width=".7"/>
+        <text x="105" y="139" text-anchor="middle" fill="#4B5563" font-family="sans-serif" font-size="8">Mgr 1</text>
+        <rect x="160" y="124" width="80" height="22" rx="3" fill="#1C2535" stroke="rgba(255,255,255,0.07)" stroke-width=".7"/>
+        <text x="200" y="139" text-anchor="middle" fill="#4B5563" font-family="sans-serif" font-size="8">Mgr 2</text>
+        <rect x="260" y="124" width="80" height="22" rx="3" fill="#1C2535" stroke="rgba(255,255,255,0.07)" stroke-width=".7"/>
+        <text x="300" y="139" text-anchor="middle" fill="#4B5563" font-family="sans-serif" font-size="8">Mgr 3</text>
+        <rect x="355" y="124" width="80" height="22" rx="3" fill="#1C2535" stroke="rgba(255,255,255,0.07)" stroke-width=".7"/>
+        <text x="395" y="139" text-anchor="middle" fill="#4B5563" font-family="sans-serif" font-size="8">Mgr 4</text>
+        <g fill="#4B5563" opacity=".5">
+          <circle cx="86" cy="185" r="4"/><circle cx="106" cy="185" r="4"/><circle cx="155" cy="185" r="4"/><circle cx="195" cy="185" r="4"/>
+          <circle cx="260" cy="185" r="4"/><circle cx="300" cy="185" r="4"/><circle cx="355" cy="185" r="4"/><circle cx="410" cy="185" r="4"/>
+        </g>
+        <g fill="#2D3748" opacity=".4">
+          <circle cx="80" cy="218" r="3"/><circle cx="100" cy="218" r="3"/><circle cx="150" cy="218" r="3"/><circle cx="200" cy="218" r="3"/>
+          <circle cx="255" cy="218" r="3"/><circle cx="305" cy="218" r="3"/><circle cx="360" cy="218" r="3"/><circle cx="410" cy="218" r="3"/>
+          <circle cx="90" cy="234" r="3"/><circle cx="170" cy="234" r="3"/><circle cx="280" cy="234" r="3"/><circle cx="385" cy="234" r="3"/>
+        </g>
+        <text x="250" y="270" text-anchor="middle" fill="rgba(255,255,255,0.12)" font-family="monospace" font-size="9" letter-spacing="1">ESTRUCTURA TRADICIONAL</text>
+      </g>
+      <g id="sa" opacity="0" style="transition:opacity .9s">
+        <rect x="210" y="10" width="80" height="28" rx="3" fill="#1C2535" stroke="rgba(255,255,255,0.12)" stroke-width=".8"/>
+        <text x="250" y="28" text-anchor="middle" fill="#F0EDE8" font-family="sans-serif" font-size="10" font-weight="300">CEO</text>
+        <line x1="250" y1="38" x2="115" y2="78" stroke="rgba(255,255,255,0.09)" stroke-width=".7"/>
+        <line x1="250" y1="38" x2="250" y2="78" stroke="rgba(255,255,255,0.09)" stroke-width=".7"/>
+        <line x1="250" y1="38" x2="385" y2="78" stroke="rgba(255,255,255,0.09)" stroke-width=".7"/>
+        <rect x="75" y="78" width="80" height="26" rx="3" fill="#1C2535" stroke="rgba(255,255,255,0.09)" stroke-width=".8"/>
+        <text x="115" y="95" text-anchor="middle" fill="#A8B2C1" font-family="sans-serif" font-size="9">Dir A</text>
+        <rect x="210" y="78" width="80" height="26" rx="3" fill="#1C2535" stroke="rgba(255,255,255,0.09)" stroke-width=".8"/>
+        <text x="250" y="95" text-anchor="middle" fill="#A8B2C1" font-family="sans-serif" font-size="9">Dir B</text>
+        <rect x="345" y="78" width="80" height="26" rx="3" fill="#1C2535" stroke="rgba(255,255,255,0.09)" stroke-width=".8"/>
+        <text x="385" y="95" text-anchor="middle" fill="#A8B2C1" font-family="sans-serif" font-size="9">Dir C</text>
+        <g fill="#A8B2C1" opacity=".6">
+          <circle cx="60" cy="155" r="6"/><circle cx="90" cy="155" r="6"/><circle cx="125" cy="155" r="6"/>
+          <circle cx="190" cy="155" r="6"/><circle cx="220" cy="155" r="6"/><circle cx="250" cy="155" r="6"/>
+          <circle cx="280" cy="155" r="6"/><circle cx="320" cy="155" r="6"/><circle cx="360" cy="155" r="6"/><circle cx="440" cy="155" r="6"/>
+        </g>
+        <g fill="#3B82F6" opacity=".7" id="agents">
+          <circle cx="75" cy="210" r="4.5"/><circle cx="115" cy="210" r="4.5"/><circle cx="155" cy="210" r="4.5"/>
+          <circle cx="215" cy="210" r="4.5"/><circle cx="255" cy="210" r="4.5"/><circle cx="295" cy="210" r="4.5"/>
+          <circle cx="355" cy="210" r="4.5"/><circle cx="395" cy="210" r="4.5"/>
+        </g>
+        <text x="250" y="240" text-anchor="middle" fill="rgba(59,130,246,0.45)" font-family="monospace" font-size="9" letter-spacing="2">AGENTES</text>
+        <text x="250" y="270" text-anchor="middle" fill="rgba(255,255,255,0.12)" font-family="monospace" font-size="9" letter-spacing="1">ESTRUCTURA AUMENTADA</text>
+      </g>
+    </svg>
+  </div>
+  <div class="s3r">
+    <div class="t" id="t30">El cambio no es solo tecnológico.</div>
+    <div class="t ac" id="t31">Es organizacional.</div>
+    <div class="t ac" id="t32">Es económico.</div>
+    <div class="t ac" id="t33">Es estratégico.</div>
+    <div class="t dm" id="t34" style="line-height:1.4">Menos capas.<br>Más capacidad por persona.<br>Más velocidad de decisión.<br>Más ejecución por equipo.</div>
+  </div>
+  <div class="slbl">Cambio Estructural</div>
+</div>
+
+<!-- S4: MODELO DE MADUREZ -->
+<div class="scene" id="s4">
+  <div class="s4hdr" id="s4h">De tareas asistidas a flujos ejecutados.</div>
+  <div class="cards">
+    <div class="card" id="c0">
+      <div class="ctop" style="background:#3B82F6"></div>
+      <div class="cnum mono" style="color:#3B82F6">01</div>
+      <svg class="cvis" viewBox="0 0 200 110" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="100" cy="55" r="20" fill="#3B82F6" opacity=".1"/>
+        <circle cx="100" cy="55" r="9" fill="#3B82F6" opacity=".85"/>
+        <circle cx="100" cy="55" r="36" fill="none" stroke="#3B82F6" stroke-width=".7" stroke-dasharray="4 6" opacity=".25"/>
+        <circle id="sat" cx="136" cy="55" r="5" fill="#3B82F6" opacity=".6"/>
+        <line id="satl" x1="100" y1="55" x2="136" y2="55" stroke="#3B82F6" stroke-width=".7" opacity=".2"/>
+      </svg>
+      <div class="ctitle">Augmented</div>
+      <div class="csub" style="color:#3B82F6">Asistencia</div>
+      <div class="cdet" style="border-left-color:rgba(59,130,246,.3)">Humano + copiloto</div>
+      <div class="cdet" style="border-left-color:rgba(59,130,246,.3)">Mejora de tareas</div>
+      <div class="cdet" style="border-left-color:rgba(59,130,246,.3)">Velocidad individual</div>
+    </div>
+    <div class="card" id="c1">
+      <div class="ctop" style="background:#06B6D4"></div>
+      <div class="cnum mono" style="color:#06B6D4">02</div>
+      <svg class="cvis" viewBox="0 0 200 110" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="100" cy="55" r="9" fill="#06B6D4" opacity=".9"/>
+        <g opacity=".65">
+          <line x1="100" y1="55" x2="148" y2="28" stroke="#06B6D4" stroke-width=".8" opacity=".25"/>
+          <circle cx="148" cy="28" r="6" fill="#06B6D4"/>
+          <line x1="100" y1="55" x2="148" y2="82" stroke="#06B6D4" stroke-width=".8" opacity=".25"/>
+          <circle cx="148" cy="82" r="6" fill="#06B6D4"/>
+          <line x1="100" y1="55" x2="52" y2="28" stroke="#06B6D4" stroke-width=".8" opacity=".25"/>
+          <circle cx="52" cy="28" r="6" fill="#06B6D4"/>
+          <line x1="100" y1="55" x2="52" y2="82" stroke="#06B6D4" stroke-width=".8" opacity=".25"/>
+          <circle cx="52" cy="82" r="6" fill="#06B6D4"/>
+        </g>
+      </svg>
+      <div class="ctitle">Agentic</div>
+      <div class="csub" style="color:#06B6D4">Ejecución</div>
+      <div class="cdet" style="border-left-color:rgba(6,182,212,.3)">Agentes ejecutan flujos</div>
+      <div class="cdet" style="border-left-color:rgba(6,182,212,.3)">Tareas encadenadas</div>
+      <div class="cdet" style="border-left-color:rgba(6,182,212,.3)">Automatización con criterio</div>
+    </div>
+    <div class="card" id="c2">
+      <div class="ctop" style="background:#818CF8"></div>
+      <div class="cnum mono" style="color:#818CF8">03</div>
+      <svg class="cvis" viewBox="0 0 200 110" xmlns="http://www.w3.org/2000/svg">
+        <g opacity=".72">
+          <circle cx="100" cy="55" r="8" fill="#818CF8"/>
+          <circle cx="58" cy="28" r="5" fill="#818CF8" opacity=".8"/>
+          <circle cx="142" cy="28" r="5" fill="#818CF8" opacity=".8"/>
+          <circle cx="58" cy="82" r="5" fill="#818CF8" opacity=".8"/>
+          <circle cx="142" cy="82" r="5" fill="#818CF8" opacity=".8"/>
+          <circle cx="28" cy="55" r="4" fill="#818CF8" opacity=".6"/>
+          <circle cx="172" cy="55" r="4" fill="#818CF8" opacity=".6"/>
+          <line x1="100" y1="55" x2="58" y2="28" stroke="#818CF8" stroke-width=".7" opacity=".22"/>
+          <line x1="100" y1="55" x2="142" y2="28" stroke="#818CF8" stroke-width=".7" opacity=".22"/>
+          <line x1="100" y1="55" x2="58" y2="82" stroke="#818CF8" stroke-width=".7" opacity=".22"/>
+          <line x1="100" y1="55" x2="142" y2="82" stroke="#818CF8" stroke-width=".7" opacity=".22"/>
+          <line x1="100" y1="55" x2="28" y2="55" stroke="#818CF8" stroke-width=".7" opacity=".18"/>
+          <line x1="100" y1="55" x2="172" y2="55" stroke="#818CF8" stroke-width=".7" opacity=".18"/>
+          <line x1="58" y1="28" x2="142" y2="28" stroke="#818CF8" stroke-width=".5" opacity=".12"/>
+          <line x1="58" y1="82" x2="142" y2="82" stroke="#818CF8" stroke-width=".5" opacity=".12"/>
+        </g>
+      </svg>
+      <div class="ctitle">Orchestrated</div>
+      <div class="csub" style="color:#818CF8">Orquestación</div>
+      <div class="cdet" style="border-left-color:rgba(129,140,248,.3)">Agentes coordinados</div>
+      <div class="cdet" style="border-left-color:rgba(129,140,248,.3)">Supervisión estratégica</div>
+      <div class="cdet" style="border-left-color:rgba(129,140,248,.3)">Organización expandida</div>
+    </div>
+  </div>
+  <div class="slbl">Modelo de Madurez / Oxy46</div>
+</div>
+
+<!-- S5: NUEVA EMPRESA -->
+<div class="scene" id="s5">
+  <div class="s5l">
+    <div id="bars" style="opacity:0;transition:opacity .7s;max-width:440px">
+      <div class="blbl">Estructura operativa</div>
+      <div class="btrack"><div class="bfill" id="b0" style="background:rgba(59,130,246,.55)"></div></div>
+      <div class="blbl">Costo de decisión</div>
+      <div class="btrack"><div class="bfill" id="b1" style="background:rgba(6,182,212,.55)"></div></div>
+      <div class="blbl">Fricción operativa</div>
+      <div class="btrack"><div class="bfill" id="b2" style="background:rgba(129,140,248,.55)"></div></div>
+      <div class="blbl">Capacidad de ejecución</div>
+      <div class="btrack"><div class="bfill" id="b3" style="background:rgba(16,185,129,.65)"></div></div>
+    </div>
+    <div class="s5msgs">
+      <div class="t" id="t50">Las empresas no solo van a usar IA.</div>
+      <div class="t ac" id="t51" style="font-size:clamp(22px,4vw,58px)">Van a operar distinto.</div>
+      <div class="t dm" id="t52" style="line-height:1.35">Menos fricción. Más margen.</div>
+      <div class="t dm" id="t53" style="line-height:1.35">Más capacidad. Más escala<br>con menos estructura.</div>
+      <div class="t" id="t54" style="font-size:clamp(22px,3.5vw,52px);font-weight:200">Una empresa más inteligente.</div>
+    </div>
+  </div>
+  <div class="s5r">
+    <svg viewBox="0 0 340 340" width="280" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="170" cy="170" r="28" fill="#3B82F6" opacity=".06"/>
+      <circle cx="170" cy="170" r="12" fill="#3B82F6" opacity=".15"/>
+      <circle cx="170" cy="170" r="6" fill="#3B82F6" opacity=".85"/>
+      <g opacity=".6">
+        <circle cx="70" cy="88" r="5" fill="#22D3EE"/>
+        <circle cx="270" cy="88" r="5" fill="#22D3EE"/>
+        <circle cx="70" cy="252" r="5" fill="#22D3EE"/>
+        <circle cx="270" cy="252" r="5" fill="#22D3EE"/>
+        <circle cx="40" cy="170" r="4" fill="#818CF8" opacity=".8"/>
+        <circle cx="300" cy="170" r="4" fill="#818CF8" opacity=".8"/>
+        <circle cx="170" cy="40" r="4" fill="#818CF8" opacity=".8"/>
+        <circle cx="170" cy="300" r="4" fill="#818CF8" opacity=".8"/>
+      </g>
+      <g stroke="#3B82F6" stroke-width=".8" opacity=".18">
+        <line x1="170" y1="170" x2="70" y2="88"/>
+        <line x1="170" y1="170" x2="270" y2="88"/>
+        <line x1="170" y1="170" x2="70" y2="252"/>
+        <line x1="170" y1="170" x2="270" y2="252"/>
+        <line x1="170" y1="170" x2="40" y2="170"/>
+        <line x1="170" y1="170" x2="300" y2="170"/>
+        <line x1="170" y1="170" x2="170" y2="40"/>
+        <line x1="170" y1="170" x2="170" y2="300"/>
+      </g>
+      <circle cx="170" cy="170" r="135" fill="none" stroke="#3B82F6" stroke-width=".5" stroke-dasharray="4 8" opacity=".1"/>
+    </svg>
+  </div>
+  <div class="slbl">La Nueva Empresa</div>
+</div>
+
+<!-- S6: CIERRE -->
+<div class="scene" id="s6">
+  <div class="s6in">
+    <svg class="s6mark" id="s6mk" viewBox="0 0 56 56" xmlns="http://www.w3.org/2000/svg">
+      <rect x="14" y="14" width="28" height="28" rx="2" fill="none" stroke="#3B82F6" stroke-width="1.5" transform="rotate(45 28 28)" opacity=".9"/>
+      <rect x="18" y="18" width="20" height="20" rx="1" fill="#3B82F6" opacity=".12" transform="rotate(45 28 28)"/>
+      <circle cx="28" cy="28" r="4" fill="#3B82F6" opacity=".85"/>
+    </svg>
+    <div class="s6oxy" id="s6ox">OXY46</div>
+    <div class="rule" id="r1"></div>
+    <div class="s6ws" id="s6ws">Workshop Ejecutivo</div>
+    <div class="s6ttl" id="s6tl">IA para Directorios</div>
+    <div class="s6sub" id="s6sb">Cómo preservar, ampliar y capturar valor<br>en la era agéntica</div>
+    <div class="rule2" id="r2"></div>
+    <div class="s6tag" id="s6tg"><span>La experimentación terminó.</span> Empieza la operacionalización.</div>
+  </div>
+  <div class="s6city" id="s6ct">Rosario · Argentina · 2025</div>
+</div>
+
+<script>
+// ── CANVAS ───────────────────────────────────────────
+const cv=document.getElementById('bg'),cx=cv.getContext('2d');
+let W,H;
+const N=[{x:.09,y:.29,p:0},{x:.22,y:.17,p:.2},{x:.35,y:.37,p:.6},{x:.46,y:.21,p:1},{x:.56,y:.39,p:.4},{x:.67,y:.24,p:.8},{x:.78,y:.34,p:.3},{x:.91,y:.20,p:.7},{x:.16,y:.52,p:1.2},{x:.29,y:.64,p:.5},{x:.42,y:.53,p:.9},{x:.53,y:.67,p:.1},{x:.65,y:.56,p:1.3},{x:.76,y:.62,p:.6},{x:.88,y:.51,p:.2},{x:.50,y:.80,p:.8},{x:.34,y:.85,p:1.1},{x:.68,y:.82,p:.4}];
+const E=[[0,1],[1,2],[2,3],[3,4],[4,5],[5,6],[6,7],[0,8],[8,9],[9,10],[10,11],[11,12],[12,13],[13,14],[1,8],[2,9],[3,10],[4,11],[5,12],[6,13],[7,14],[9,16],[10,15],[11,15],[12,17],[15,16],[15,17]];
+function resize(){W=cv.width=window.innerWidth;H=cv.height=window.innerHeight}
+window.addEventListener('resize',resize);resize();
+let bt=0;
+function drawBg(ts){bt=ts/1000;cx.clearRect(0,0,W,H);
+  const cw=W/Math.floor(W/90),rh=H/Math.floor(H/90);
+  cx.strokeStyle='rgba(255,255,255,0.038)';cx.lineWidth=.5;
+  for(let i=0;i*cw<=W+cw;i++){cx.beginPath();cx.moveTo(i*cw,0);cx.lineTo(i*cw,H);cx.stroke()}
+  const dr=(bt*7)%rh;
+  for(let j=-1;j*rh-dr<=H+rh;j++){const y=j*rh-dr;cx.beginPath();cx.moveTo(0,y);cx.lineTo(W,y);cx.stroke()}
+  E.forEach(([a,b])=>{cx.beginPath();cx.moveTo(N[a].x*W,N[a].y*H);cx.lineTo(N[b].x*W,N[b].y*H);cx.strokeStyle='rgba(59,130,246,0.065)';cx.lineWidth=.7;cx.stroke()});
+  N.forEach(n=>{const pu=.5+.3*Math.sin(bt*Math.PI+n.p*6.28);cx.beginPath();cx.arc(n.x*W,n.y*H,(2.5+pu)*2.2,0,6.28);cx.fillStyle=`rgba(59,130,246,${.028*pu})`;cx.fill();cx.beginPath();cx.arc(n.x*W,n.y*H,(2.5+pu)*.65,0,6.28);cx.fillStyle=`rgba(59,130,246,${pu*.5})`;cx.fill()});
+  requestAnimationFrame(drawBg)}
+requestAnimationFrame(drawBg);
+
+// ── SCENE MANAGER ────────────────────────────────────
+const DUR=[12000,15000,18000,22000,15000,13000],TOT=DUR.reduce((s,d)=>s+d,0);
+let asc=-1,ss=0,vs=0,run=false,bAnim=false;
+const g=id=>document.getElementById(id);
+const on=(id,cls='on')=>{const e=g(id);if(e)e.classList.add(cls)};
+const off=(id,cls='on')=>{const e=g(id);if(e)e.classList.remove(cls)};
+
+function startVideo(){g('play-screen').style.display='none';on('dots');vs=performance.now();run=true;goScene(0,vs);requestAnimationFrame(tick)}
+
+function goScene(i,now){
+  if(asc>=0)off(`s${asc+1}`,'active');
+  asc=i;ss=now;on(`s${i+1}`,'active');
+  for(let j=0;j<6;j++){const d=g(`d${j}`);d&&d.classList.toggle('active',j===i)};
+  if(i===5)g('skip').style.display='none';
+}
+function skipScene(){const n=performance.now();if(asc<5)goScene(asc+1,n)}
+
+function tick(now){
+  if(!run)return;
+  const tt=now-vs,st=now-ss;
+  g('pf').style.width=Math.min(100,(tt/TOT)*100)+'%';
+  [u1,u2,u3,u4,u5,u6][asc]&&[u1,u2,u3,u4,u5,u6][asc](st);
+  if(st>=DUR[asc]){if(asc<5)goScene(asc+1,now);else{run=false;return}}
+  requestAnimationFrame(tick)
+}
+
+// ── TEXT HELPER ──────────────────────────────────────
+function tx(id,t,ti,to,ind=680){
+  const e=g(id);if(!e)return;
+  if(t<ti){e.style.opacity=0;e.style.transform='translateY(16px)'}
+  else if(t<ti+ind){const p=(t-ti)/ind;e.style.opacity=p;e.style.transform=`translateY(${16*(1-p)}px)`}
+  else if(t<to){e.style.opacity=1;e.style.transform='translateY(0)'}
+  else if(t<to+480){e.style.opacity=1-(t-to)/480}
+  else{e.style.opacity=0}
+}
+function ap(id,t,st,en,len){const e=g(id);if(!e)return;if(t<st){e.style.strokeDashoffset=len;return}const p=Math.min(1,(t-st)/(en-st));e.style.strokeDashoffset=len*(1-p)}
+function so(id,v){const e=g(id);if(e)e.style.opacity=v}
+
+// ── S1 ───────────────────────────────────────────────
+function u1(t){
+  const br=g('s1-brand');if(br)br.style.opacity=t>400?Math.min(.55,(t-400)/600*.55):0;
+  tx('t10',t,300,3100);tx('t11',t,3300,6300);tx('t12',t,6500,9300);tx('t13',t,9600,12000)
+}
+
+// ── S2 ───────────────────────────────────────────────
+function u2(t){
+  ap('pm',t,700,3200,580);ap('pv',t,2100,5000,550);ap('pc',t,3500,7000,590);
+  so('lm',t>700?Math.min(.65,(t-700)/600*.65):0);so('lv',t>2100?Math.min(.65,(t-2100)/600*.65):0);so('lc',t>3500?Math.min(.65,(t-3500)/600*.65):0);
+  so('dm',t>3000?Math.min(.8,(t-3000)/400*.8):0);so('dv',t>4800?Math.min(.8,(t-4800)/400*.8):0);so('dc',t>6800?Math.min(.8,(t-6800)/400*.8):0);
+  tx('t20',t,500,3400);tx('t21',t,3500,6800);tx('t22',t,6900,11500);tx('t23',t,11600,15000)
+}
+
+// ── S3 ───────────────────────────────────────────────
+function u3(t){
+  tx('t30',t,400,3700);tx('t31',t,3800,6900);tx('t32',t,7000,9900);tx('t33',t,10000,12900);tx('t34',t,13000,18000);
+  if(t>10500){const p=Math.min(1,(t-10500)/1100);const sb=g('sb'),sa=g('sa');if(sb)sb.style.opacity=1-p;if(sa)sa.style.opacity=p}
+}
+
+// ── S4 ───────────────────────────────────────────────
+function u4(t){
+  const h=g('s4h');if(h)h.classList.toggle('on',t>400);
+  const c0=g('c0'),c1=g('c1'),c2=g('c2');
+  if(c0)c0.classList.toggle('on',t>900);
+  if(c1)c1.classList.toggle('on',t>4200);
+  if(c2)c2.classList.toggle('on',t>8500);
+  // Animate satellite
+  const s=g('sat'),sl=g('satl');if(s&&sl){const a=(t/3200)*Math.PI*2,sx=100+36*Math.cos(a),sy=55+36*Math.sin(a);s.setAttribute('cx',sx);s.setAttribute('cy',sy);sl.setAttribute('x2',sx);sl.setAttribute('y2',sy)}
+}
+
+// ── S5 ───────────────────────────────────────────────
+function u5(t){
+  const bs=g('bars');if(bs&&t>600){bs.style.opacity=1;if(!bAnim){bAnim=true;setTimeout(()=>{g('b0').style.width='31%'},100);setTimeout(()=>{g('b1').style.width='19%'},280);setTimeout(()=>{g('b2').style.width='17%'},460);setTimeout(()=>{g('b3').style.width='77%'},640)}}
+  tx('t50',t,300,3200);tx('t51',t,3300,5900);tx('t52',t,6000,9400);tx('t53',t,9500,12400);tx('t54',t,12500,15000)
+}
+
+// ── S6 ───────────────────────────────────────────────
+function u6(t){
+  const m=g('s6mk');if(m)m.classList.toggle('on',t>200);
+  on_at('s6ox',t,800);on_at('r1',t,1300);on_at('s6ws',t,1900);on_at('s6tl',t,2700);on_at('s6sb',t,3800);on_at('r2',t,5200);on_at('s6tg',t,6000);on_at('s6ct',t,7200)
+}
+function on_at(id,t,delay){const e=g(id);if(e)e.classList.toggle('on',t>delay)}
+</script>
+</body>
+</html>
